@@ -1,5 +1,5 @@
 {
-  "name": "@halo-dev/plugin-frontend-template",
+  "name": "@halo-dev/plugin-unsplash",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -13,6 +13,7 @@
   "dependencies": {
     "@halo-dev/admin-shared": "*",
     "@halo-dev/components": "*",
+    "unsplash-js": "^7.0.15",
     "vue": "^3.2.37"
   },
   "devDependencies": {

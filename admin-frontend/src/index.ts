@@ -1,10 +1,10 @@
-import { definePlugin, BasicLayout } from "@halo-dev/admin-shared";
+import {definePlugin, BasicLayout} from "@halo-dev/admin-shared";
 import DefaultView from "./views/DefaultView.vue";
-import { IconGrid } from "@halo-dev/components";
+import {IconGrid} from "@halo-dev/components";
 import "./styles/index.css";
 
 export default definePlugin({
-  name: "PluginTemplate",
+  name: "PluginUnsplash",
   components: [],
   routes: [
     {
@@ -15,16 +15,13 @@ export default definePlugin({
           path: "",
           name: "HelloWorld",
           component: DefaultView,
-          meta: {
-            permissions: ["plugin:apples:view"],
-          },
         },
       ],
     },
   ],
   menus: [
     {
-      name: "From PluginTemplate",
+      name: "From PluginUnsplash",
       items: [
         {
           name: "HelloWorld",
@@ -35,6 +32,8 @@ export default definePlugin({
     },
   ],
   extensionPoints: {},
-  activated() {},
-  deactivated() {},
+  activated() {
+  },
+  deactivated() {
+  },
 });
