@@ -1,39 +1,23 @@
-import {definePlugin, BasicLayout} from "@halo-dev/admin-shared";
-import DefaultView from "./views/DefaultView.vue";
-import {IconGrid} from "@halo-dev/components";
-import "./styles/index.css";
+import {
+  definePlugin,
+  type AttachmentSelectorPublicState,
+} from "@halo-dev/admin-shared";
+import { markRaw, type Ref } from "vue";
+import UnsplashSelectorProvider from "./components/UnsplashSelectorProvider.vue";
+import "./styles/tailwind.css";
 
 export default definePlugin({
   name: "PluginUnsplash",
   components: [],
-  routes: [
-    {
-      path: "/hello-world",
-      component: BasicLayout,
-      children: [
-        {
-          path: "",
-          name: "HelloWorld",
-          component: DefaultView,
-        },
-      ],
+  routes: [],
+  menus: [],
+  extensionPoints: {
+    ATTACHMENT_SELECTOR: (state: Ref<AttachmentSelectorPublicState>) => {
+      state.value.providers.push({
+        id: "unsplash",
+        label: "Unsplash",
+        component: markRaw(UnsplashSelectorProvider),
+      });
     },
-  ],
-  menus: [
-    {
-      name: "From PluginUnsplash",
-      items: [
-        {
-          name: "HelloWorld",
-          path: "/hello-world",
-          icon: IconGrid,
-        },
-      ],
-    },
-  ],
-  extensionPoints: {},
-  activated() {
-  },
-  deactivated() {
   },
 });

@@ -36,6 +36,7 @@ export default defineConfig({
           "@halo-dev/components": "HaloComponents",
           "@halo-dev/admin-shared": "HaloAdminShared",
         },
+        generatedCode: "es5",
       },
     },
   },

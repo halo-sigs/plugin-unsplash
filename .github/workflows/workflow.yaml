@@ -51,3 +51,4 @@ jobs:
           path: |
             build/libs/*-plain.jar
           retention-days: 1
+

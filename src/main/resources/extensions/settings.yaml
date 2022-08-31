@@ -6,7 +6,7 @@ spec:
   - group: basic
     label: 基本设置
     formSchema:
-      - $formkit: text
+      - $formkit: password
         help: https://unsplash.com/developers
         label: Access Key
         name: accessKey
