@@ -181,19 +181,22 @@ await handleFetchTopics();
   </div>
   <div
     v-if="!keyword"
-    class="gap-x-2 unsplash-topics gap-y-3 unsplash-mt-2 unsplash-flex unsplash-overflow-y-hidden unsplash-overflow-x-scroll unsplash-scroll-smooth unsplash-pb-1"
+    class="unsplash-topics unsplash-mt-2 unsplash-flex unsplash-gap-y-3 unsplash-gap-x-2 unsplash-overflow-y-hidden unsplash-overflow-x-scroll unsplash-scroll-smooth unsplash-pb-1"
   >
     <div
       v-for="(topic, index) in topics"
       :key="index"
       :class="{
-        '!bg-gray-200 !text-gray-900': topic.id === selectedTopic?.id,
+        '!unsplash-bg-gray-200 !unsplash-text-gray-900':
+          topic.id === selectedTopic?.id,
       }"
-      class="flex cursor-pointer items-center rounded-base bg-gray-100 p-2 text-gray-500 transition-all hover:bg-gray-200 hover:text-gray-900 hover:shadow-sm"
+      class="unsplash-rounded-base unsplash-flex unsplash-cursor-pointer unsplash-items-center unsplash-bg-gray-100 unsplash-p-2 unsplash-text-gray-500 unsplash-transition-all hover:unsplash-bg-gray-200 hover:unsplash-text-gray-900 hover:unsplash-shadow-sm"
       @click="handleSelectTopic(topic)"
     >
-      <div class="flex flex-1 items-center truncate">
-        <span class="truncate text-sm">
+      <div
+        class="unsplash-flex unsplash-flex-1 unsplash-items-center unsplash-truncate"
+      >
+        <span class="unsplash-truncate unsplash-text-sm">
           {{ topic.title }}({{ topic.total_photos }})
         </span>
       </div>
