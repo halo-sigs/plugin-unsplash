@@ -10,7 +10,7 @@ spec:
   logo: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+CiAgPHBhdGggZD0iTTE2IDh2OEgwVjhoNXY0aDZWOGg1em0tNS04SDV2NGg2VjB6Ii8+Cjwvc3ZnPgo="
   settingName: unsplash-settings
   configMapName: unsplash-settings
-  homepage: https://github.com/ruibaby/plugin-unsplash
+  homepage: https://github.com/halo-sigs/plugin-unsplash
   displayName: "Unsplash"
   description: "提供从 Unsplash 选择或转存图片的能力"
   license:
