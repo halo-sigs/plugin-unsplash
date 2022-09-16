@@ -1,9 +1,15 @@
 <script lang="ts" setup>
-import { VCard, IconCheckboxFill, VTabbar } from "@halo-dev/components";
-import { ref, onMounted, watchEffect, computed } from "vue";
+import {
+  VCard,
+  IconCheckboxFill,
+  VAvatar,
+  VButton,
+  IconExternalLinkLine,
+} from "@halo-dev/components";
+import { ref, watchEffect } from "vue";
 import { createApi } from "unsplash-js";
-import type { Basic } from "unsplash-js/dist/methods/photos/types";
-import type { Basic as Collection } from "unsplash-js/dist/methods/collections/types";
+import type { Basic as Photo } from "unsplash-js/dist/methods/photos/types";
+import type { Basic as Topic } from "unsplash-js/dist/methods/topics/types";
 import type { AttachmentLike } from "@halo-dev/admin-shared";
 import apiClient from "../utils/api-client";
 import type { ConfigMap } from "../types";
@@ -22,17 +28,13 @@ const emit = defineEmits<{
 }>();
 
 const accessKey = ref<string>("");
-const collections = ref<Collection[]>();
-const selectedCollection = ref<string>("");
-const photos = ref<Basic[]>();
-const selectedPhotos = ref<Set<Basic>>(new Set());
-
-const collectionTabs = computed(() => {
-  return collections.value?.map(({ id, title }) => ({
-    id: id,
-    label: title,
-  }));
-});
+const topics = ref<Topic[]>();
+const selectedTopic = ref<Topic>();
+const photos = ref<Photo[]>([] as Photo[]);
+const page = ref(1);
+const loading = ref(false);
+const selectedPhotos = ref<Set<Photo>>(new Set());
+const keyword = ref("");
 
 const handleFetchUnsplashAccessKey = async () => {
   try {
@@ -49,40 +51,97 @@ const handleFetchUnsplashAccessKey = async () => {
   }
 };
 
-const handleFetchCollections = async () => {
+const handleFetchTopics = async () => {
   const unsplash = createApi({ accessKey: accessKey.value });
 
-  const { response } = await unsplash.collections.list({
+  const { response } = await unsplash.topics.list({
     page: 1,
-    perPage: 5,
+    perPage: 100,
+    orderBy: "featured",
   });
 
-  collections.value = response?.results;
+  topics.value = response?.results;
 
-  if (collections.value?.length) {
-    selectedCollection.value = collections.value[0].id;
-    handleFetchUnsplash();
+  if (topics.value?.length) {
+    selectedTopic.value = topics.value[0];
+    handleFetchPhotos();
   }
 };
 
-const onChangeCollection = (collection: string) => {
-  selectedCollection.value = collection;
-  handleFetchUnsplash();
+const handleSelectTopic = (topic: Topic) => {
+  selectedTopic.value = topic;
+  photos.value = [];
+  page.value = 1;
+  handleFetchPhotos();
 };
 
-const handleFetchUnsplash = async () => {
+const handleFetchPhotos = async () => {
+  loading.value = true;
   const unsplash = createApi({ accessKey: accessKey.value });
 
-  const { response } = await unsplash.collections.getPhotos({
-    collectionId: selectedCollection.value,
-    page: 1,
-    perPage: 100,
+  if (!selectedTopic.value) {
+    return;
+  }
+
+  const { response } = await unsplash.topics.getPhotos({
+    topicIdOrSlug: selectedTopic.value?.id,
+    page: page.value,
+    perPage: 48,
   });
 
-  photos.value = response?.results;
+  if (response?.results) {
+    photos.value = [...photos.value, ...response.results];
+  }
+  loading.value = false;
 };
 
-const handleSelect = async (photo: Basic) => {
+const handleSearch = async (data?: any) => {
+  // clear photos when first search
+  if (!keyword.value) {
+    page.value = 1;
+    photos.value = [];
+  }
+
+  if (data) {
+    keyword.value = data.keyword;
+  }
+
+  if (!data.keyword) {
+    photos.value = [];
+    page.value = 1;
+    handleFetchTopics();
+    return;
+  }
+
+  loading.value = true;
+
+  const unsplash = createApi({ accessKey: accessKey.value });
+
+  const { response } = await unsplash.search.getPhotos({
+    page: page.value,
+    perPage: 48,
+    query: keyword.value,
+  });
+
+  if (response?.results) {
+    photos.value = [...photos.value, ...response.results];
+  }
+
+  loading.value = false;
+};
+
+const handleFetchNext = () => {
+  page.value++;
+
+  if (keyword.value) {
+    handleSearch();
+    return;
+  }
+
+  handleFetchPhotos();
+};
+
+const handleSelect = async (photo: Photo) => {
   if (selectedPhotos.value.has(photo)) {
     selectedPhotos.value.delete(photo);
     return;
@@ -90,7 +149,7 @@ const handleSelect = async (photo: Basic) => {
   selectedPhotos.value.add(photo);
 };
 
-const isChecked = (photo: Basic) => {
+const isChecked = (photo: Photo) => {
   return Array.from(selectedPhotos.value)
     .map((item) => item.id)
     .includes(photo.id);
@@ -106,20 +165,43 @@ watchEffect(() => {
   emit("update:selected", photos);
 });
 
-onMounted(async () => {
-  await handleFetchUnsplashAccessKey();
-  await handleFetchCollections();
-});
+await handleFetchUnsplashAccessKey();
+await handleFetchTopics();
 </script>
 <template>
-  <VTabbar
-    :active-id="selectedCollection"
-    :items="collectionTabs"
-    type="pills"
-    @change="onChangeCollection"
-  ></VTabbar>
+  <div>
+    <FormKit id="search-form" type="form" @submit="handleSearch">
+      <FormKit
+        name="keyword"
+        type="text"
+        placeholder="输入关键字搜索"
+        @keyup.enter="$formkit.submit('search-form')"
+      ></FormKit>
+    </FormKit>
+  </div>
   <div
-    class="unsplash-mt-2 unsplash-grid unsplash-grid-cols-3 unsplash-gap-x-2 unsplash-gap-y-3 sm:unsplash-grid-cols-3 md:unsplash-grid-cols-6 xl:unsplash-grid-cols-8 2xl:unsplash-grid-cols-10"
+    v-if="!keyword"
+    class="gap-x-2 unsplash-topics gap-y-3 unsplash-mt-2 unsplash-flex unsplash-overflow-y-hidden unsplash-overflow-x-scroll unsplash-scroll-smooth unsplash-pb-1"
+  >
+    <div
+      v-for="(topic, index) in topics"
+      :key="index"
+      :class="{
+        '!bg-gray-200 !text-gray-900': topic.id === selectedTopic?.id,
+      }"
+      class="flex cursor-pointer items-center rounded-base bg-gray-100 p-2 text-gray-500 transition-all hover:bg-gray-200 hover:text-gray-900 hover:shadow-sm"
+      @click="handleSelectTopic(topic)"
+    >
+      <div class="flex flex-1 items-center truncate">
+        <span class="truncate text-sm">
+          {{ topic.title }}({{ topic.total_photos }})
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="unsplash-mt-2 unsplash-grid unsplash-grid-cols-3 unsplash-gap-x-2 unsplash-gap-y-3 sm:unsplash-grid-cols-3 md:unsplash-grid-cols-6"
     role="list"
   >
     <VCard
@@ -138,26 +220,93 @@ onMounted(async () => {
         >
           <img
             class="unsplash-pointer-events-none unsplash-object-cover group-hover:unsplash-opacity-75"
-            :src="photo.urls.thumb"
+            :src="photo.urls.small"
           />
         </div>
-        <p
-          class="unsplash-pointer-events-none unsplash-block unsplash-truncate unsplash-px-2 unsplash-py-1 unsplash-text-center unsplash-text-xs unsplash-font-medium unsplash-text-gray-700"
-        >
-          {{ photo.alt_description }}
-        </p>
         <div
           :class="{ '!unsplash-flex': selectedPhotos.has(photo) }"
-          class="unsplash-absolute unsplash-top-0 unsplash-left-0 unsplash-hidden unsplash-h-1/3 unsplash-w-full unsplash-justify-end unsplash-bg-gradient-to-b unsplash-from-gray-300 unsplash-to-transparent unsplash-ease-in-out group-hover:unsplash-flex"
+          class="unsplash-absolute unsplash-top-0 unsplash-left-0 unsplash-hidden unsplash-h-1/3 unsplash-w-full unsplash-justify-between unsplash-bg-gradient-to-b unsplash-from-gray-300 unsplash-to-transparent unsplash-ease-in-out group-hover:unsplash-flex"
         >
+          <a
+            :href="photo.links.html"
+            target="_blank"
+            class="unsplash-mt-1 unsplash-ml-1"
+          >
+            <IconExternalLinkLine
+              class="unsplash-h-6 unsplash-w-6 unsplash-cursor-pointer unsplash-text-white unsplash-transition-all hover:unsplash-text-black"
+            />
+          </a>
           <IconCheckboxFill
             :class="{
               '!unsplash-text-black': selectedPhotos.has(photo),
             }"
-            class="hover:unsplash-text-primary unsplash-mt-1 unsplash-mr-1 unsplash-h-6 unsplash-w-6 unsplash-cursor-pointer unsplash-text-white unsplash-transition-all"
+            class="unsplash-mt-1 unsplash-mr-1 unsplash-h-6 unsplash-w-6 unsplash-cursor-pointer unsplash-text-white unsplash-transition-all hover:unsplash-text-black"
           />
+        </div>
+        <div
+          :class="{ '!unsplash-flex': selectedPhotos.has(photo) }"
+          class="unsplash-absolute unsplash-left-0 unsplash-bottom-0 unsplash-hidden unsplash-w-full unsplash-bg-gradient-to-t unsplash-from-gray-600 unsplash-to-transparent unsplash-ease-in-out group-hover:unsplash-flex"
+        >
+          <div
+            class="p-1 unsplash-flex unsplash-w-full unsplash-flex-row unsplash-items-center unsplash-gap-2"
+          >
+            <VAvatar
+              v-if="photo.user.profile_image?.medium"
+              :src="photo.user.profile_image.medium"
+              circle
+              size="sm"
+            ></VAvatar>
+            <div
+              class="flex unsplash-flex-1 unsplash-flex-col unsplash-truncate"
+            >
+              <a
+                class="unsplash-truncate unsplash-text-xs unsplash-font-medium unsplash-text-white hover:unsplash-underline"
+                :href="photo.links.html"
+                target="_blank"
+              >
+                {{ photo.user.name }}
+              </a>
+              <span
+                class="unsplash-truncate unsplash-text-xs unsplash-text-white unsplash-opacity-80"
+              >
+                {{ photo.user.bio }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </VCard>
   </div>
+  <div
+    class="unsplash-mt-4 unsplash-flex unsplash-items-center unsplash-justify-center"
+  >
+    <VButton :loading="loading" type="secondary" @click="handleFetchNext">
+      {{ loading ? "加载中..." : "加载更多" }}
+    </VButton>
+  </div>
 </template>
+<style scoped>
+.unsplash-topics::-webkit-scrollbar-track-piece {
+  background-color: #f8f8f8;
+  -webkit-border-radius: 2em;
+  -moz-border-radius: 2em;
+  border-radius: 2em;
+}
+
+.unsplash-topics::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.unsplash-topics::-webkit-scrollbar-thumb {
+  background-color: #f2eaea;
+  background-clip: padding-box;
+  -webkit-border-radius: 2em;
+  -moz-border-radius: 2em;
+  border-radius: 2em;
+}
+
+.unsplash-topics::-webkit-scrollbar-thumb:hover {
+  background-color: #bbb;
+}
+</style>
