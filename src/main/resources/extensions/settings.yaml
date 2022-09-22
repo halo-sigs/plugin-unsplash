@@ -3,11 +3,12 @@ kind: Setting
 metadata:
   name: unsplash-settings
 spec:
-  - group: basic
-    label: 基本设置
-    formSchema:
-      - $formkit: password
-        help: https://unsplash.com/developers
-        label: Access Key
-        name: accessKey
-        validation: required
+  forms: 
+    - group: basic
+      label: 基本设置
+      formSchema:
+        - $formkit: password
+          help: https://unsplash.com/developers
+          label: Access Key
+          name: accessKey
+          validation: required
