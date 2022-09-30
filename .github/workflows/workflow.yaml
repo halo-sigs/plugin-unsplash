@@ -61,6 +61,7 @@ jobs:
 
   github-release:
     runs-on: ubuntu-latest
+    needs: build
     if: github.event_name == 'release'
     steps:
       - name: Download plugin-unsplash jar
