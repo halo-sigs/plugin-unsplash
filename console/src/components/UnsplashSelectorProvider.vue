@@ -10,7 +10,7 @@ import { ref, watchEffect } from "vue";
 import { createApi } from "unsplash-js";
 import type { Basic as Photo } from "unsplash-js/dist/methods/photos/types";
 import type { Basic as Topic } from "unsplash-js/dist/methods/topics/types";
-import type { AttachmentLike } from "@halo-dev/admin-shared";
+import type { AttachmentLike } from "@halo-dev/console-shared";
 import apiClient from "../utils/api-client";
 import type { ConfigMap } from "../types";
 
