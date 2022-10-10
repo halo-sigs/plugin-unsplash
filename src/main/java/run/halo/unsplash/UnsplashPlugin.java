@@ -11,11 +11,9 @@ import run.halo.app.plugin.BasePlugin;
  */
 @Component
 public class UnsplashPlugin extends BasePlugin {
-    private final SchemeManager schemeManager;
 
     public UnsplashPlugin(PluginWrapper wrapper) {
         super(wrapper);
-        this.schemeManager = getApplicationContext().getBean(SchemeManager.class);
     }
 
     @Override
