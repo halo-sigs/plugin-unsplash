@@ -12,8 +12,8 @@
     "prettier": "prettier --write './src/**/*.{vue,js,jsx,ts,tsx,css,scss,json,yml,yaml,html}'"
   },
   "dependencies": {
-    "@halo-dev/admin-shared": "^0.0.0-alpha.4",
-    "@halo-dev/components": "^0.0.0-alpha.3",
+    "@halo-dev/console-shared": "^0.0.0-alpha.5",
+    "@halo-dev/components": "^0.0.0-alpha.4",
     "axios": "^0.27.2",
     "unsplash-js": "^7.0.15",
     "vue": "^3.2.39"

@@ -13,7 +13,7 @@ export default defineConfig({
   },
   build: {
     outDir: fileURLToPath(
-      new URL("../src/main/resources/admin", import.meta.url)
+      new URL("../src/main/resources/console", import.meta.url)
     ),
     emptyOutDir: true,
     lib: {
@@ -34,7 +34,7 @@ export default defineConfig({
           vue: "Vue",
           "vue-router": "VueRouter",
           "@halo-dev/components": "HaloComponents",
-          "@halo-dev/admin-shared": "HaloAdminShared",
+          "@halo-dev/console-shared": "HaloConsoleShared",
         },
         generatedCode: "es5",
       },
