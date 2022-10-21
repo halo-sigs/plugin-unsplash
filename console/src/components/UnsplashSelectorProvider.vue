@@ -5,6 +5,7 @@ import {
   VAvatar,
   VButton,
   IconExternalLinkLine,
+  Toast,
 } from "@halo-dev/components";
 import { ref, watchEffect } from "vue";
 import { createApi } from "unsplash-js";
@@ -46,8 +47,8 @@ const handleFetchUnsplashAccessKey = async () => {
       configMap.data?.basic || "{ accessKey: '' }"
     ).accessKey;
   } catch (error) {
-    alert("未正确配置 Unsplash 的 Access Key");
-    console.error(error);
+    console.error("Failed to fetch plugin-unsplash configMap", error);
+    Toast.warning("未正确配置 Unsplash 的 Access Key");
   }
 };
 
