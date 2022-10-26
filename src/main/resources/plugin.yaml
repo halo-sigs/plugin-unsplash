@@ -4,7 +4,7 @@ metadata:
   name: PluginUnsplash
 spec:
   enabled: true
-  version: 0.0.1-SNAPSHOT
+  version: 1.0.0-alpha.2
   requires: "*"
   author: halo-dev
   logo: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+CiAgPHBhdGggZD0iTTE2IDh2OEgwVjhoNXY0aDZWOGg1em0tNS04SDV2NGg2VjB6Ii8+Cjwvc3ZnPgo="
