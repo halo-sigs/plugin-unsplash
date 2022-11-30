@@ -6,8 +6,10 @@ spec:
   enabled: true
   version: 1.0.0-alpha.2
   requires: "*"
-  author: halo-dev
-  logo: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNiAxNiI+CiAgPHBhdGggZD0iTTE2IDh2OEgwVjhoNXY0aDZWOGg1em0tNS04SDV2NGg2VjB6Ii8+Cjwvc3ZnPgo="
+  author:
+    name: Halo OSS Team
+    website: https://github.com/halo-dev
+  logo: logo.svg
   settingName: unsplash-settings
   configMapName: unsplash-settings
   homepage: https://github.com/halo-sigs/plugin-unsplash
