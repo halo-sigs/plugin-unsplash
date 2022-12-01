@@ -4,7 +4,7 @@ metadata:
   name: PluginUnsplash
 spec:
   enabled: true
-  version: 1.0.0-alpha.2
+  version: 1.0.0
   requires: "*"
   author:
     name: Halo OSS Team
