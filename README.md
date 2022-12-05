@@ -1,8 +1,6 @@
 # plugin-unsplash
 
-Halo 2.0 接入 [Unsplash](https://unsplash.com/) 的插件（WIP）
-
-> 当前仅可作为测试使用。
+Halo 2.0 接入 [Unsplash](https://unsplash.com/) 的插件。
 
 ## 开发环境
 
@@ -35,10 +33,14 @@ halo:
 
 ## 安装与使用
 
-1. 目前设置了 GitHub Action 的 Push 构建，你可以在 <https://github.com/halo-sigs/plugin-unsplash/actions> 的每个构建详情中下载最新构建的 JAR 文件。
+1. 进入 [Releases](https://github.com/halo-sigs/plugin-unsplash/releases) 下载最新版本的 JAR 文件。
 2. 在 Halo 后台的插件管理上传 JAR 文件进行安装。
 3. 启动该插件之后，需要在设置中配置 Unsplash 的 Access Key，详情可查阅：<https://unsplash.com/developers>
 4. 完成 Access Key 配置后，在后台任意位置选择附件的弹框中选择 Unsplash 选项卡，即可使用 Unsplash 的图片。
+
+## 声明
+
+此插件所提供的内容均来自 [Unsplash](https://unsplash.com/)。
 
 ## 截图
 
