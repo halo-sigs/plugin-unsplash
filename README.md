@@ -1,6 +1,6 @@
 # plugin-unsplash
 
-Halo 2.0 接入 [Unsplash](https://unsplash.com/) 的插件
+Halo 2.0 接入 [Unsplash](https://unsplash.com/) 的插件。
 
 ## 开发环境
 
