@@ -16,4 +16,5 @@ spec:
   displayName: "Unsplash"
   description: "提供从 Unsplash 选择或转存图片的能力"
   license:
-    - name: "MIT"
+    - name: "GPL-3.0"
+      url: "https://github.com/halo-sigs/plugin-unsplash/blob/main/LICENSE"
