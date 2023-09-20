@@ -244,7 +244,7 @@ watchEffect(() => {
             class="unsplash-absolute unsplash-bottom-0 unsplash-left-0 unsplash-hidden unsplash-w-full unsplash-bg-gradient-to-t unsplash-from-gray-600 unsplash-to-transparent unsplash-ease-in-out group-hover:unsplash-flex"
           >
             <div
-              class="p-1 unsplash-flex unsplash-w-full unsplash-flex-row unsplash-items-center unsplash-gap-2"
+              class="unsplash-flex unsplash-w-full unsplash-flex-row unsplash-items-center unsplash-gap-2 unsplash-p-1"
             >
               <VAvatar
                 v-if="photo.user.profile_image?.medium"
@@ -253,7 +253,7 @@ watchEffect(() => {
                 size="sm"
               ></VAvatar>
               <div
-                class="flex unsplash-flex-1 unsplash-flex-col unsplash-truncate"
+                class="unsplash-flex unsplash-flex-1 unsplash-flex-col unsplash-truncate"
               >
                 <a
                   class="unsplash-truncate unsplash-text-xs unsplash-font-medium unsplash-text-white hover:unsplash-underline"
