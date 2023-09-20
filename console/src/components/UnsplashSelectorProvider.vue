@@ -13,7 +13,7 @@ import type { Basic as Photo } from "unsplash-js/dist/methods/photos/types";
 import type { Basic as Topic } from "unsplash-js/dist/methods/topics/types";
 import type { AttachmentLike } from "@halo-dev/console-shared";
 import apiClient from "../utils/api-client";
-import type { ConfigMap } from "../types";
+import type { ConfigMap } from "@halo-dev/api-client";
 
 withDefaults(
   defineProps<{
@@ -182,7 +182,7 @@ await handleFetchTopics();
   </div>
   <div
     v-if="!keyword"
-    class="unsplash-topics unsplash-mt-2 unsplash-flex unsplash-gap-y-3 unsplash-gap-x-2 unsplash-overflow-y-hidden unsplash-overflow-x-scroll unsplash-scroll-smooth unsplash-pb-1"
+    class="unsplash-topics unsplash-mt-2 unsplash-flex unsplash-gap-x-2 unsplash-gap-y-3 unsplash-overflow-y-hidden unsplash-overflow-x-scroll unsplash-scroll-smooth unsplash-pb-1"
   >
     <div
       v-for="(topic, index) in topics"
@@ -220,7 +220,7 @@ await handleFetchTopics();
     >
       <div class="unsplash-group unsplash-relative unsplash-bg-white">
         <div
-          class="unsplash-aspect-w-10 unsplash-aspect-h-8 unsplash-block unsplash-h-full unsplash-w-full unsplash-cursor-pointer unsplash-overflow-hidden unsplash-bg-gray-100"
+          class="unsplash-aspect-h-8 unsplash-aspect-w-10 unsplash-block unsplash-h-full unsplash-w-full unsplash-cursor-pointer unsplash-overflow-hidden unsplash-bg-gray-100"
         >
           <img
             class="unsplash-pointer-events-none unsplash-object-cover group-hover:unsplash-opacity-75"
@@ -229,12 +229,12 @@ await handleFetchTopics();
         </div>
         <div
           :class="{ '!unsplash-flex': selectedPhotos.has(photo) }"
-          class="unsplash-absolute unsplash-top-0 unsplash-left-0 unsplash-hidden unsplash-h-1/3 unsplash-w-full unsplash-justify-between unsplash-bg-gradient-to-b unsplash-from-gray-300 unsplash-to-transparent unsplash-ease-in-out group-hover:unsplash-flex"
+          class="unsplash-absolute unsplash-left-0 unsplash-top-0 unsplash-hidden unsplash-h-1/3 unsplash-w-full unsplash-justify-between unsplash-bg-gradient-to-b unsplash-from-gray-300 unsplash-to-transparent unsplash-ease-in-out group-hover:unsplash-flex"
         >
           <a
             :href="photo.links.html"
             target="_blank"
-            class="unsplash-mt-1 unsplash-ml-1"
+            class="unsplash-ml-1 unsplash-mt-1"
           >
             <IconExternalLinkLine
               class="unsplash-h-6 unsplash-w-6 unsplash-cursor-pointer unsplash-text-white unsplash-transition-all hover:unsplash-text-black"
@@ -244,12 +244,12 @@ await handleFetchTopics();
             :class="{
               '!unsplash-text-black': selectedPhotos.has(photo),
             }"
-            class="unsplash-mt-1 unsplash-mr-1 unsplash-h-6 unsplash-w-6 unsplash-cursor-pointer unsplash-text-white unsplash-transition-all hover:unsplash-text-black"
+            class="unsplash-mr-1 unsplash-mt-1 unsplash-h-6 unsplash-w-6 unsplash-cursor-pointer unsplash-text-white unsplash-transition-all hover:unsplash-text-black"
           />
         </div>
         <div
           :class="{ '!unsplash-flex': selectedPhotos.has(photo) }"
-          class="unsplash-absolute unsplash-left-0 unsplash-bottom-0 unsplash-hidden unsplash-w-full unsplash-bg-gradient-to-t unsplash-from-gray-600 unsplash-to-transparent unsplash-ease-in-out group-hover:unsplash-flex"
+          class="unsplash-absolute unsplash-bottom-0 unsplash-left-0 unsplash-hidden unsplash-w-full unsplash-bg-gradient-to-t unsplash-from-gray-600 unsplash-to-transparent unsplash-ease-in-out group-hover:unsplash-flex"
         >
           <div
             class="p-1 unsplash-flex unsplash-w-full unsplash-flex-row unsplash-items-center unsplash-gap-2"
