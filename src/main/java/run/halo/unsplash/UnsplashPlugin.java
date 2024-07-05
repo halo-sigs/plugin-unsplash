@@ -1,9 +1,9 @@
 package run.halo.unsplash;
 
-import org.pf4j.PluginWrapper;
 import org.springframework.stereotype.Component;
-import run.halo.app.extension.SchemeManager;
+
 import run.halo.app.plugin.BasePlugin;
+import run.halo.app.plugin.PluginContext;
 
 /**
  * @author ryanwang
@@ -12,15 +12,8 @@ import run.halo.app.plugin.BasePlugin;
 @Component
 public class UnsplashPlugin extends BasePlugin {
 
-    public UnsplashPlugin(PluginWrapper wrapper) {
-        super(wrapper);
+    public UnsplashPlugin(PluginContext context) {
+        super(context);
     }
 
-    @Override
-    public void start() {
-    }
-
-    @Override
-    public void stop() {
-    }
 }
