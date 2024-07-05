@@ -5,14 +5,16 @@ metadata:
 spec:
   enabled: true
   version: 1.0.0
-  requires: ">=2.0.0"
+  requires: ">=2.10.0"
   author:
-    name: Halo OSS Team
+    name: Halo
     website: https://github.com/halo-dev
   logo: logo.svg
   settingName: unsplash-settings
   configMapName: unsplash-settings
-  homepage: https://github.com/halo-sigs/plugin-unsplash
+  repo: https://github.com/halo-sigs/plugin-unsplash
+  homepage: https://www.halo.run/store/apps/app-NRcGw
+  issues: https://github.com/halo-sigs/plugin-unsplash/issues
   displayName: "Unsplash"
   description: "提供从 Unsplash 选择或转存图片的能力"
   license:
