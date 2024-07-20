@@ -10,11 +10,13 @@ import {
   VLoading
 } from '@halo-dev/components'
 import type { AttachmentLike } from '@halo-dev/console-shared'
-import { useQuery } from '@tanstack/vue-query'
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { createApi } from 'unsplash-js'
 import type { Basic as Photo } from 'unsplash-js/dist/methods/photos/types'
 import type { Basic as Topic } from 'unsplash-js/dist/methods/topics/types'
 import { computed, ref, watch, watchEffect } from 'vue'
+
+const queryClient = useQueryClient()
 
 const props = withDefaults(
   defineProps<{
@@ -38,6 +40,7 @@ const selectedPhotos = ref<Set<Photo>>(new Set())
 const photos = ref<Photo[]>([])
 const page = ref(1)
 const keyword = ref('')
+const pluginDetailModal = ref(false)
 
 const { data: accessKey } = useQuery({
   queryKey: ['unsplash-access-key'],
@@ -51,10 +54,12 @@ const { data: accessKey } = useQuery({
   onSuccess(data) {
     if (!data) {
       Toast.error('未正确配置 Unsplash Access Key')
+      pluginDetailModal.value = true
     }
   },
   onError() {
     Toast.error('未正确配置 Unsplash Access Key')
+    pluginDetailModal.value = true
   }
 })
 
@@ -200,7 +205,7 @@ watchEffect(() => {
           <div class="cursor-pointer bg-gray-100 aspect-10/8 block h-full w-full overflow-hidden">
             <img
               class="pointer-events-none object-cover group-hover:opacity-75 size-full"
-              :src="photo.urls.small"
+              :src="photo.urls.thumb"
             />
           </div>
           <div
@@ -252,6 +257,12 @@ watchEffect(() => {
         {{ isFetching ? '加载中...' : '加载更多' }}
       </VButton>
     </div>
+
+    <PluginDetailModal
+      v-if="pluginDetailModal"
+      name="PluginUnsplash"
+      @close="pluginDetailModal = false"
+    />
   </div>
 </template>
 <style scoped>
