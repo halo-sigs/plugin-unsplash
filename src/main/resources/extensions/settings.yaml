@@ -3,7 +3,7 @@ kind: Setting
 metadata:
   name: unsplash-settings
 spec:
-  forms: 
+  forms:
     - group: basic
       label: 基本设置
       formSchema:
@@ -12,3 +12,38 @@ spec:
           label: Access Key
           name: accessKey
           validation: required
+        - $formkit: group
+          label: 转存模式
+          name: downloadMode
+          help: 开启之后，可以先转存到附件库，然后选择图片
+          value:
+            enable: false
+          children:
+            - $formkit: checkbox
+              name: enable
+              id: enable
+              label: 启用
+            - $formkit: select
+              if: "$value.enable"
+              action: "/apis/storage.halo.run/v1alpha1/policies"
+              name: policyName
+              id: policyName
+              key: policyName
+              label: 附件存储策略
+              autoSelect: false
+              requestOption:
+                labelField: "spec.displayName"
+                valueField: "metadata.name"
+              validation: "required"
+            - $formkit: select
+              if: "$value.enable"
+              action: "/apis/storage.halo.run/v1alpha1/groups"
+              name: groupName
+              key: groupName
+              id: groupName
+              label: 附件分组
+              autoSelect: false
+              clearable: true
+              requestOption:
+                labelField: "spec.displayName"
+                valueField: "metadata.name"

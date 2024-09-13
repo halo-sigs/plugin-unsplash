@@ -18,12 +18,22 @@ import {
 } from '@halo-dev/components'
 import type { AttachmentLike } from '@halo-dev/console-shared'
 import { useQuery } from '@tanstack/vue-query'
+import { cloneDeep, set } from 'lodash-es'
 import { createApi } from 'unsplash-js'
 import type { Basic as Photo } from 'unsplash-js/dist/methods/photos/types'
 import type { Basic as Topic } from 'unsplash-js/dist/methods/topics/types'
 import { computed, ref, watch } from 'vue'
 
 const BINDING_LABEL_KEY = 'unsplash.halo.run/id'
+
+interface BasicConfig {
+  accessKey?: string
+  downloadMode?: {
+    enable?: boolean
+    policyName?: string
+    groupName?: string
+  }
+}
 
 const props = withDefaults(
   defineProps<{
@@ -49,30 +59,36 @@ const page = ref(1)
 const keyword = ref('')
 const pluginDetailModal = ref(false)
 
-const { data: accessKey } = useQuery({
+const { data: basicConfig } = useQuery({
   queryKey: ['unsplash-access-key'],
   queryFn: async () => {
     const { data: configMap } = await consoleApiClient.plugin.plugin.fetchPluginConfig({
       name: 'PluginUnsplash'
     })
 
-    return JSON.parse(configMap.data?.basic || "{ accessKey: '' }").accessKey
-  },
-  onSuccess(data) {
-    if (!data) {
+    return JSON.parse(configMap.data?.basic || '{}') as BasicConfig
+  }
+})
+
+const accessKey = computed(() => basicConfig.value?.accessKey)
+
+watch(
+  () => accessKey.value,
+  () => {
+    if (!accessKey.value) {
       Toast.error('未正确配置 Unsplash Access Key')
       pluginDetailModal.value = true
     }
-  },
-  onError() {
-    Toast.error('未正确配置 Unsplash Access Key')
-    pluginDetailModal.value = true
   }
-})
+)
 
 const { data: topics } = useQuery<Topic[] | undefined>({
   queryKey: ['unsplash-topics', accessKey],
   queryFn: async () => {
+    if (!accessKey.value) {
+      return []
+    }
+
     const unsplash = createApi({ accessKey: accessKey.value })
     const { response } = await unsplash.topics.list({
       page: 1,
@@ -90,8 +106,12 @@ const { data: topics } = useQuery<Topic[] | undefined>({
 })
 
 const { isFetching } = useQuery({
-  queryKey: ['unsplash-photos', keyword, selectedTopic, page],
+  queryKey: ['unsplash-photos', keyword, selectedTopic, page, accessKey],
   queryFn: async () => {
+    if (!accessKey.value) {
+      return []
+    }
+
     const unsplash = createApi({ accessKey: accessKey.value })
 
     if (keyword.value) {
@@ -174,6 +194,32 @@ const isDisabled = (photo: Photo) => {
 
 const downloading = ref(false)
 
+async function onDownloadModeChange(value: boolean) {
+  const basicConfigToUpdate = cloneDeep(basicConfig.value)
+  set<BasicConfig>(basicConfigToUpdate || {}, 'downloadMode.enable', value)
+
+  const { data: configMap } = await consoleApiClient.plugin.plugin.fetchPluginConfig({
+    name: 'PluginUnsplash'
+  })
+
+  configMap.data = {
+    ...configMap.data,
+    basic: JSON.stringify(basicConfigToUpdate)
+  }
+
+  const { data: updatedConfigMap } = await consoleApiClient.plugin.plugin.updatePluginConfig({
+    name: 'PluginUnsplash',
+    configMap: configMap
+  })
+
+  const updatedBasicConfig = JSON.parse(updatedConfigMap.data?.basic || '{}') as BasicConfig
+
+  if (updatedBasicConfig.downloadMode?.enable && !updatedBasicConfig.downloadMode.policyName) {
+    Toast.warning('开启转存模式需要配置附件存储策略')
+    pluginDetailModal.value = true
+  }
+}
+
 const { data: bindAttachments, refetch: refetchAttachments } = useQuery({
   queryKey: ['plugin:unsplash:bind-attachments', photos],
   queryFn: async () => {
@@ -197,7 +243,8 @@ async function handleDownloadImage() {
       `/apis/api.console.halo.run/v1alpha1/attachments/-/upload-from-url`,
       {
         url: photo.urls.raw,
-        policyName: 'default-policy'
+        policyName: basicConfig.value?.downloadMode?.policyName,
+        groupName: basicConfig.value?.downloadMode?.groupName
       }
     )
 
@@ -257,7 +304,9 @@ function checkBinding(photo: Photo) {
         v-tooltip="'勾选此选项后，会先上传到服务器，然后获得服务器的图片地址'"
         type="checkbox"
         label="转存模式"
+        :model-value="basicConfig?.downloadMode?.enable"
         :classes="{ outer: '!p-0 flex-none', wrapper: '!mb-0' }"
+        @input="onDownloadModeChange"
       />
     </div>
   </div>
@@ -287,7 +336,7 @@ function checkBinding(photo: Photo) {
       <VCard
         v-for="(photo, index) in photos"
         :key="index"
-        :body-class="['!p-0']"
+        :body-class="['!p-0', 'select-none']"
         :class="{
           'ring-1 ring-black': isChecked(photo),
           'pointer-events-none !cursor-not-allowed opacity-50': isDisabled(photo)
@@ -303,24 +352,27 @@ function checkBinding(photo: Photo) {
             />
           </div>
           <div
-            :class="{ '!flex': selectedPhotos.has(photo) }"
-            class="absolute left-0 top-0 hidden h-1/3 w-full justify-between from-gray-300 to-transparent bg-gradient-to-b ease-in-out group-hover:flex"
+            class="absolute left-0 top-0 h-1/3 w-full ease-in-out group-hover:from-gray-300 group-hover:to-transparent group-hover:bg-gradient-to-b"
+            :class="{ 'from-gray-300 to-transparent bg-gradient-to-b': selectedPhotos.has(photo) }"
           >
-            <a :href="photo.links.html" target="_blank" class="ml-1 mt-1">
-              <IconExternalLinkLine
-                class="h-6 w-6 cursor-pointer text-white transition-all hover:text-black"
-              />
-            </a>
+            <div class="flex items-center justify-between p-1">
+              <a :href="photo.links.html" target="_blank">
+                <IconExternalLinkLine
+                  class="size-6 cursor-pointer text-white opacity-0 transition-all hover:text-black group-hover:opacity-100"
+                />
+              </a>
 
-            <IconCheckboxFill
-              :class="{
-                '!text-black': selectedPhotos.has(photo)
-              }"
-              class="mr-1 mt-1 h-6 w-6 cursor-pointer text-white transition-all hover:text-black"
-            />
-          </div>
-          <div>
-            <VTag v-if="checkBinding(photo)" theme="primary">已转存</VTag>
+              <div class="flex items-center gap-1.5">
+                <IconCheckboxFill
+                  :class="{
+                    '!text-black !opacity-100': selectedPhotos.has(photo)
+                  }"
+                  class="size-6 cursor-pointer text-white opacity-0 transition-all hover:text-black group-hover:opacity-100"
+                />
+
+                <VTag v-if="checkBinding(photo)" theme="primary">已转存</VTag>
+              </div>
+            </div>
           </div>
           <div
             :class="{ '!flex': selectedPhotos.has(photo) }"
