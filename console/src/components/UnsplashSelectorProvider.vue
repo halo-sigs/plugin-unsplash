@@ -1,5 +1,11 @@
 <script lang="ts" setup>
-import { consoleApiClient } from '@halo-dev/api-client'
+import {
+  axiosInstance,
+  consoleApiClient,
+  coreApiClient,
+  type Attachment,
+  type JsonPatchInner
+} from '@halo-dev/api-client'
 import {
   IconCheckboxFill,
   IconExternalLinkLine,
@@ -7,16 +13,17 @@ import {
   VAvatar,
   VButton,
   VCard,
-  VLoading
+  VLoading,
+  VTag
 } from '@halo-dev/components'
 import type { AttachmentLike } from '@halo-dev/console-shared'
-import { useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useQuery } from '@tanstack/vue-query'
 import { createApi } from 'unsplash-js'
 import type { Basic as Photo } from 'unsplash-js/dist/methods/photos/types'
 import type { Basic as Topic } from 'unsplash-js/dist/methods/topics/types'
-import { computed, ref, watch, watchEffect } from 'vue'
+import { computed, ref, watch } from 'vue'
 
-const queryClient = useQueryClient()
+const BINDING_LABEL_KEY = 'unsplash.halo.run/id'
 
 const props = withDefaults(
   defineProps<{
@@ -153,23 +160,110 @@ const isDisabled = (photo: Photo) => {
   return false
 }
 
-watchEffect(() => {
-  const photos = Array.from(selectedPhotos.value).map((photo) => {
-    return {
-      url: photo.urls.raw,
-      type: photo.alt_description as string
-    }
-  })
-  emit('update:selected', photos)
+// watchEffect(() => {
+//   const photos = Array.from(selectedPhotos.value).map((photo) => {
+//     return {
+//       url: photo.urls.raw,
+//       type: photo.alt_description as string
+//     }
+//   })
+//   emit('update:selected', photos)
+// })
+
+// download
+
+const downloading = ref(false)
+
+const { data: bindAttachments, refetch: refetchAttachments } = useQuery({
+  queryKey: ['plugin:unsplash:bind-attachments', photos],
+  queryFn: async () => {
+    const ids = photos.value.map((photo) => photo.id)
+
+    const { data } = await coreApiClient.storage.attachment.listAttachment({
+      labelSelector: [`unsplash.halo.run/id=(${ids.join(',')})`]
+    })
+
+    return data.items
+  }
 })
+
+async function handleDownloadImage() {
+  downloading.value = true
+
+  for (let index = 0; index < Array.from(selectedPhotos.value).length; index++) {
+    const photo = Array.from(selectedPhotos.value)[index]
+
+    const { data: newAttachment } = await axiosInstance.post<Attachment>(
+      `/apis/api.console.halo.run/v1alpha1/attachments/-/upload-from-url`,
+      {
+        url: photo.urls.raw,
+        policyName: 'default-policy'
+      }
+    )
+
+    const hasLabels = !!newAttachment.metadata.labels
+
+    const jsonPatchInner: JsonPatchInner[] = hasLabels
+      ? [
+          {
+            op: 'add',
+            path: `/metadata/labels/unsplash.halo.run~1id`,
+            value: photo.id
+          }
+        ]
+      : [
+          {
+            op: 'add',
+            path: '/metadata/labels',
+            value: {
+              'unsplash.halo.run/id': photo.id
+            }
+          }
+        ]
+
+    await coreApiClient.storage.attachment.patchAttachment({
+      name: newAttachment.metadata.name,
+      jsonPatchInner
+    })
+
+    await refetchAttachments()
+  }
+
+  Toast.success('转存完成')
+
+  downloading.value = false
+}
+
+function checkBinding(photo: Photo) {
+  return bindAttachments.value?.some(
+    (item) => item.metadata.labels?.[BINDING_LABEL_KEY] === photo.id
+  )
+}
 </script>
 <template>
-  <div>
-    <SearchInput v-model="keyword" />
+  <div class="flex items-center justify-between">
+    <SearchInput v-model="keyword" class="min-w-0 flex-1 shrink" />
+
+    <div class="flex flex-none items-center gap-2">
+      <VButton
+        v-if="selectedPhotos.size"
+        :loading="downloading"
+        size="sm"
+        @click="handleDownloadImage"
+      >
+        转存已选择的图片
+      </VButton>
+      <FormKit
+        v-tooltip="'勾选此选项后，会先上传到服务器，然后获得服务器的图片地址'"
+        type="checkbox"
+        label="转存模式"
+        :classes="{ outer: '!p-0 flex-none', wrapper: '!mb-0' }"
+      />
+    </div>
   </div>
   <div
     v-if="!keyword"
-    class="topics mt-2 flex gap-x-2 gap-y-3 overflow-y-hidden overflow-x-scroll scroll-smooth pb-1"
+    class="topics mt-2 flex gap-x-2 gap-y-3 overflow-x-scroll overflow-y-hidden scroll-smooth pb-1"
   >
     <div
       v-for="(topic, index) in topics"
@@ -189,7 +283,7 @@ watchEffect(() => {
   <VLoading v-if="isFetching && photos.length === 0" />
 
   <div v-else>
-    <div class="mt-2 gap-x-2 gap-y-3 grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6" role="list">
+    <div class="grid grid-cols-3 mt-2 gap-x-2 gap-y-3 md:grid-cols-6 sm:grid-cols-3" role="list">
       <VCard
         v-for="(photo, index) in photos"
         :key="index"
@@ -202,33 +296,37 @@ watchEffect(() => {
         @click.stop="handleSelect(photo)"
       >
         <div class="group relative bg-white">
-          <div class="cursor-pointer bg-gray-100 aspect-10/8 block h-full w-full overflow-hidden">
+          <div class="block aspect-10/8 h-full w-full cursor-pointer overflow-hidden bg-gray-100">
             <img
-              class="pointer-events-none object-cover group-hover:opacity-75 size-full"
+              class="pointer-events-none size-full object-cover group-hover:opacity-75"
               :src="photo.urls.thumb"
             />
           </div>
           <div
             :class="{ '!flex': selectedPhotos.has(photo) }"
-            class="w-full absolute left-0 top-0 hidden h-1/3 justify-between bg-gradient-to-b from-gray-300 to-transparent ease-in-out group-hover:flex"
+            class="absolute left-0 top-0 hidden h-1/3 w-full justify-between from-gray-300 to-transparent bg-gradient-to-b ease-in-out group-hover:flex"
           >
             <a :href="photo.links.html" target="_blank" class="ml-1 mt-1">
               <IconExternalLinkLine
-                class="cursor-pointer transition-all h-6 w-6 text-white hover:text-black"
+                class="h-6 w-6 cursor-pointer text-white transition-all hover:text-black"
               />
             </a>
+
             <IconCheckboxFill
               :class="{
                 '!text-black': selectedPhotos.has(photo)
               }"
-              class="mt-1 h-6 w-6 cursor-pointer text-white transition-all hover:text-black mr-1"
+              class="mr-1 mt-1 h-6 w-6 cursor-pointer text-white transition-all hover:text-black"
             />
+          </div>
+          <div>
+            <VTag v-if="checkBinding(photo)" theme="primary">已转存</VTag>
           </div>
           <div
             :class="{ '!flex': selectedPhotos.has(photo) }"
-            class="absolute left-0 hidden w-full to-transparent ease-in-out group-hover:flex bottom-0 bg-gradient-to-t from-gray-600"
+            class="absolute bottom-0 left-0 hidden w-full from-gray-600 to-transparent bg-gradient-to-t ease-in-out group-hover:flex"
           >
-            <div class="flex w-full items-center flex-row gap-2 p-1">
+            <div class="w-full flex flex-row items-center gap-2 p-1">
               <VAvatar
                 v-if="photo.user.profile_image?.medium"
                 :src="photo.user.profile_image.medium"
@@ -237,8 +335,8 @@ watchEffect(() => {
               ></VAvatar>
               <div class="flex flex-1 flex-col truncate">
                 <a
-                  class="truncate text-white text-xs font-medium hover:underline"
-                  :href="photo.links.html"
+                  class="truncate text-xs text-white font-medium hover:underline"
+                  :href="photo.user.links.html"
                   target="_blank"
                 >
                   {{ photo.user.name }}
@@ -252,7 +350,7 @@ watchEffect(() => {
         </div>
       </VCard>
     </div>
-    <div v-if="photos.length > 0" class="flex items-center mt-4 justify-center">
+    <div v-if="photos.length > 0" class="mt-4 flex items-center justify-center">
       <VButton :loading="isFetching" type="secondary" @click="page++">
         {{ isFetching ? '加载中...' : '加载更多' }}
       </VButton>
@@ -265,6 +363,7 @@ watchEffect(() => {
     />
   </div>
 </template>
+
 <style scoped>
 .topics::-webkit-scrollbar-track-piece {
   background-color: #f8f8f8;
