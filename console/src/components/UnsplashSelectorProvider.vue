@@ -1,14 +1,16 @@
 <script lang="ts" setup>
+import { useConfig, type BasicConfig } from '@/composables/use-config'
+import { BINDING_LABEL_KEY, PLUGIN_NAME } from '@/constants'
 import {
   axiosInstance,
   consoleApiClient,
   coreApiClient,
-  type Attachment,
-  type JsonPatchInner
+  type Attachment
 } from '@halo-dev/api-client'
 import {
   IconCheckboxFill,
   IconExternalLinkLine,
+  IconUpload,
   Toast,
   VAvatar,
   VButton,
@@ -17,23 +19,14 @@ import {
   VTag
 } from '@halo-dev/components'
 import type { AttachmentLike } from '@halo-dev/console-shared'
-import { useQuery } from '@tanstack/vue-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { cloneDeep, set } from 'lodash-es'
 import { createApi } from 'unsplash-js'
 import type { Basic as Photo } from 'unsplash-js/dist/methods/photos/types'
 import type { Basic as Topic } from 'unsplash-js/dist/methods/topics/types'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
-const BINDING_LABEL_KEY = 'unsplash.halo.run/id'
-
-interface BasicConfig {
-  accessKey?: string
-  downloadMode?: {
-    enable?: boolean
-    policyName?: string
-    groupName?: string
-  }
-}
+const queryClient = useQueryClient()
 
 const props = withDefaults(
   defineProps<{
@@ -54,36 +47,30 @@ const emit = defineEmits<{
 
 const selectedTopic = ref<Topic>()
 const selectedPhotos = ref<Set<Photo>>(new Set())
+const finalSelectedUrls = ref<Set<AttachmentLike>>(new Set())
 const photos = ref<Photo[]>([])
 const page = ref(1)
 const keyword = ref('')
 const pluginDetailModal = ref(false)
 
-const { data: basicConfig } = useQuery({
-  queryKey: ['unsplash-access-key'],
-  queryFn: async () => {
-    const { data: configMap } = await consoleApiClient.plugin.plugin.fetchPluginConfig({
-      name: 'PluginUnsplash'
-    })
+const { basicConfig, isDownloadMode, accessKey, isFetching: isConfigFetching } = useConfig()
 
-    return JSON.parse(configMap.data?.basic || '{}') as BasicConfig
-  }
-})
-
-const accessKey = computed(() => basicConfig.value?.accessKey)
-
-watch(
-  () => accessKey.value,
+const cleanupAccessKeyWatcher = watch(
+  [() => accessKey.value, () => isConfigFetching.value],
   () => {
-    if (!accessKey.value) {
+    if (!isConfigFetching.value && !accessKey.value) {
       Toast.error('未正确配置 Unsplash Access Key')
       pluginDetailModal.value = true
+      cleanupAccessKeyWatcher()
     }
+  },
+  {
+    immediate: true
   }
 )
 
 const { data: topics } = useQuery<Topic[] | undefined>({
-  queryKey: ['unsplash-topics', accessKey],
+  queryKey: ['plugin:unsplash:topics', accessKey],
   queryFn: async () => {
     if (!accessKey.value) {
       return []
@@ -106,7 +93,7 @@ const { data: topics } = useQuery<Topic[] | undefined>({
 })
 
 const { isFetching } = useQuery({
-  queryKey: ['unsplash-photos', keyword, selectedTopic, page, accessKey],
+  queryKey: ['plugin:unsplash:photos', keyword, selectedTopic, page, accessKey],
   queryFn: async () => {
     if (!accessKey.value) {
       return []
@@ -143,6 +130,19 @@ const { isFetching } = useQuery({
   enabled: computed(() => !!accessKey.value)
 })
 
+const { data: boundAttachments, refetch: refetchAttachments } = useQuery({
+  queryKey: ['plugin:unsplash:bound-attachments', photos],
+  queryFn: async () => {
+    const ids = photos.value.map((photo) => photo.id)
+
+    const { data } = await coreApiClient.storage.attachment.listAttachment({
+      labelSelector: [`unsplash.halo.run/id=(${ids.join(',')})`]
+    })
+
+    return data.items
+  }
+})
+
 watch(
   () => keyword.value,
   () => {
@@ -174,32 +174,70 @@ const isChecked = (photo: Photo) => {
 }
 
 const isDisabled = (photo: Photo) => {
+  if (downloading.value) {
+    return true
+  }
   if (props.max !== undefined && props.max <= selectedPhotos.value.size && !isChecked(photo)) {
     return true
   }
   return false
 }
 
-// watchEffect(() => {
-//   const photos = Array.from(selectedPhotos.value).map((photo) => {
-//     return {
-//       url: photo.urls.raw,
-//       type: photo.alt_description as string
-//     }
-//   })
-//   emit('update:selected', photos)
-// })
+watch(
+  () => finalSelectedUrls.value,
+  (value) => {
+    emit('update:selected', Array.from(value))
+  },
+  {
+    deep: true
+  }
+)
 
-// download
+watch(
+  () => selectedPhotos.value,
+  (value) => {
+    console.log(value)
+    finalSelectedUrls.value.clear()
 
+    if (isDownloadMode.value) {
+      for (const photo of value) {
+        const bindAttachment = boundAttachments.value?.find(
+          (item) => item.metadata.labels?.[BINDING_LABEL_KEY] === photo.id
+        )
+        if (bindAttachment) {
+          finalSelectedUrls.value.add({
+            url: bindAttachment.status?.permalink || '',
+            type: bindAttachment.spec.displayName || ''
+          })
+        }
+      }
+      return
+    }
+    for (const photo of value) {
+      finalSelectedUrls.value.add({
+        url: photo.urls.raw,
+        type: photo.alt_description as string
+      })
+    }
+  },
+  {
+    deep: true
+  }
+)
+
+// Download photo to attachments
 const downloading = ref(false)
 
 async function onDownloadModeChange(value: boolean) {
+  if (!accessKey.value) {
+    return
+  }
+
   const basicConfigToUpdate = cloneDeep(basicConfig.value)
   set<BasicConfig>(basicConfigToUpdate || {}, 'downloadMode.enable', value)
 
   const { data: configMap } = await consoleApiClient.plugin.plugin.fetchPluginConfig({
-    name: 'PluginUnsplash'
+    name: PLUGIN_NAME
   })
 
   configMap.data = {
@@ -208,7 +246,7 @@ async function onDownloadModeChange(value: boolean) {
   }
 
   const { data: updatedConfigMap } = await consoleApiClient.plugin.plugin.updatePluginConfig({
-    name: 'PluginUnsplash',
+    name: PLUGIN_NAME,
     configMap: configMap
   })
 
@@ -218,73 +256,125 @@ async function onDownloadModeChange(value: boolean) {
     Toast.warning('开启转存模式需要配置附件存储策略')
     pluginDetailModal.value = true
   }
+
+  queryClient.invalidateQueries({ queryKey: ['plugin:unsplash:basic-config'] })
 }
 
-const { data: bindAttachments, refetch: refetchAttachments } = useQuery({
-  queryKey: ['plugin:unsplash:bind-attachments', photos],
-  queryFn: async () => {
-    const ids = photos.value.map((photo) => photo.id)
+const { mutateAsync: bindingAttachmentMutate } = useMutation({
+  mutationKey: ['plugin:unsplash:binding-attachment'],
+  mutationFn: async ({ attachment, photo }: { attachment: Attachment; photo: Photo }) => {
+    const labels = set<{
+      [key: string]: string
+    }>(attachment.metadata.labels || {}, [BINDING_LABEL_KEY], photo.id)
 
-    const { data } = await coreApiClient.storage.attachment.listAttachment({
-      labelSelector: [`unsplash.halo.run/id=(${ids.join(',')})`]
-    })
-
-    return data.items
-  }
+    return await coreApiClient.storage.attachment.patchAttachment(
+      {
+        name: attachment.metadata.name,
+        jsonPatchInner: [
+          {
+            op: 'add',
+            path: '/metadata/labels',
+            value: labels
+          }
+        ]
+      },
+      {
+        mute: true
+      }
+    )
+  },
+  retry: 3
 })
 
 async function handleDownloadImage() {
   downloading.value = true
 
-  for (let index = 0; index < Array.from(selectedPhotos.value).length; index++) {
-    const photo = Array.from(selectedPhotos.value)[index]
+  let hasError = false
 
-    const { data: newAttachment } = await axiosInstance.post<Attachment>(
-      `/apis/api.console.halo.run/v1alpha1/attachments/-/upload-from-url`,
-      {
-        url: photo.urls.raw,
-        policyName: basicConfig.value?.downloadMode?.policyName,
-        groupName: basicConfig.value?.downloadMode?.groupName
-      }
-    )
+  for (const photo of Array.from(selectedPhotos.value)) {
+    if (isBound(photo)) {
+      continue
+    }
 
-    const hasLabels = !!newAttachment.metadata.labels
-
-    const jsonPatchInner: JsonPatchInner[] = hasLabels
-      ? [
-          {
-            op: 'add',
-            path: `/metadata/labels/unsplash.halo.run~1id`,
-            value: photo.id
-          }
-        ]
-      : [
-          {
-            op: 'add',
-            path: '/metadata/labels',
-            value: {
-              'unsplash.halo.run/id': photo.id
-            }
-          }
-        ]
-
-    await coreApiClient.storage.attachment.patchAttachment({
-      name: newAttachment.metadata.name,
-      jsonPatchInner
-    })
-
-    await refetchAttachments()
+    try {
+      await downloadSinglePhoto(photo)
+    } catch (error) {
+      hasError = true
+      Toast.error(`图片 ${photo.alt_description} 下载失败`)
+    }
   }
 
-  Toast.success('转存完成')
+  if (hasError) {
+    Toast.warning(`部分图片转存失败`)
+  } else {
+    Toast.success('所有图片转存完成')
+  }
 
   downloading.value = false
 }
 
-function checkBinding(photo: Photo) {
-  return bindAttachments.value?.some(
+async function downloadSinglePhoto(photo: Photo) {
+  try {
+    const { policyName, groupName, urlType } = basicConfig.value?.downloadMode || {}
+
+    const { data: newAttachment } = await axiosInstance.post<Attachment>(
+      `/apis/api.console.halo.run/v1alpha1/attachments/-/upload-from-url`,
+      {
+        url: photo.urls[urlType || 'raw'],
+        filename: `${photo.alt_description?.toLowerCase().replace(/\s+/g, '-') || photo.id}.jpg`,
+        policyName: policyName,
+        groupName: groupName
+      }
+    )
+
+    await bindingAttachmentMutate({
+      attachment: newAttachment,
+      photo
+    })
+
+    const permalink = await getAttachmentPermalink(newAttachment.metadata.name)
+
+    finalSelectedUrls.value.add({
+      url: permalink || '',
+      type: newAttachment.spec.displayName || ''
+    })
+
+    await refetchAttachments()
+  } catch (error) {
+    throw new Error(`上传失败: ${(error as Error).message}`)
+  }
+}
+
+async function getAttachmentPermalink(name: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fetchPermalink = () => {
+      coreApiClient.storage.attachment
+        .getAttachment({
+          name: name
+        })
+        .then((response) => {
+          const permalink = response.data.status?.permalink
+          if (permalink) {
+            resolve(permalink)
+          } else {
+            setTimeout(fetchPermalink, 1000)
+          }
+        })
+        .catch((error) => reject(error))
+    }
+    fetchPermalink()
+  })
+}
+
+function isBound(photo: Photo) {
+  return boundAttachments.value?.some(
     (item) => item.metadata.labels?.[BINDING_LABEL_KEY] === photo.id
   )
+}
+
+function onPluginDetailModalClose() {
+  pluginDetailModal.value = false
+  queryClient.invalidateQueries({ queryKey: ['plugin:unsplash:basic-config'] })
 }
 </script>
 <template>
@@ -293,11 +383,15 @@ function checkBinding(photo: Photo) {
 
     <div class="flex flex-none items-center gap-2">
       <VButton
-        v-if="selectedPhotos.size"
+        v-if="isDownloadMode && selectedPhotos.size"
         :loading="downloading"
         size="sm"
+        type="secondary"
         @click="handleDownloadImage"
       >
+        <template #icon>
+          <IconUpload class="size-full" />
+        </template>
         转存已选择的图片
       </VButton>
       <FormKit
@@ -305,7 +399,7 @@ function checkBinding(photo: Photo) {
         type="checkbox"
         label="转存模式"
         :model-value="basicConfig?.downloadMode?.enable"
-        :classes="{ outer: '!p-0 flex-none', wrapper: '!mb-0' }"
+        :classes="{ outer: '!p-0 flex-none', wrapper: 'unsplash-checkbox-wrapper' }"
         @input="onDownloadModeChange"
       />
     </div>
@@ -370,7 +464,7 @@ function checkBinding(photo: Photo) {
                   class="size-6 cursor-pointer text-white opacity-0 transition-all hover:text-black group-hover:opacity-100"
                 />
 
-                <VTag v-if="checkBinding(photo)" theme="primary">已转存</VTag>
+                <VTag v-if="isBound(photo)" theme="primary">已转存</VTag>
               </div>
             </div>
           </div>
@@ -411,7 +505,7 @@ function checkBinding(photo: Photo) {
     <PluginDetailModal
       v-if="pluginDetailModal"
       name="PluginUnsplash"
-      @close="pluginDetailModal = false"
+      @close="onPluginDetailModalClose"
     />
   </div>
 </template>
@@ -439,5 +533,11 @@ function checkBinding(photo: Photo) {
 
 .topics::-webkit-scrollbar-thumb:hover {
   background-color: #bbb;
+}
+</style>
+
+<style>
+.unsplash-checkbox-wrapper {
+  margin: 0 !important;
 }
 </style>
