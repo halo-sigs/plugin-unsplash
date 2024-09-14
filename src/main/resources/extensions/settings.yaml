@@ -50,7 +50,7 @@ spec:
               validation: "required"
             - $formkit: select
               if: "$value.enable"
-              action: "/apis/storage.halo.run/v1alpha1/groups"
+              action: "/apis/storage.halo.run/v1alpha1/groups?labelSelector=%21halo.run%2Fhidden&sort=metadata.creationTimestamp%2Casc"
               name: groupName
               key: groupName
               id: groupName
