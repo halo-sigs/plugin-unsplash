@@ -317,15 +317,19 @@ async function downloadSinglePhoto(photo: Photo) {
   try {
     const { policyName, groupName, urlType } = basicConfig.value?.downloadMode || {}
 
-    const { data: newAttachment } = await axiosInstance.post<Attachment>(
-      `/apis/api.console.halo.run/v1alpha1/attachments/-/upload-from-url`,
-      {
-        url: photo.urls[urlType || 'raw'],
-        filename: `${photo.alt_description?.toLowerCase().replace(/\s+/g, '-') || photo.id}.jpg`,
-        policyName: policyName,
-        groupName: groupName
-      }
-    )
+    const imageResponse = await fetch(photo.urls[urlType || 'raw'])
+
+    const imageBlob = await imageResponse.blob()
+
+    const { data: newAttachment } = await consoleApiClient.storage.attachment.uploadAttachment({
+      file: new File(
+        [imageBlob],
+        `${photo.alt_description?.toLowerCase().replace(/\s+/g, '-') || photo.id}.jpg`,
+        { type: imageBlob.type }
+      ),
+      policyName: policyName as string,
+      groupName: groupName
+    })
 
     await bindingAttachmentMutate({
       attachment: newAttachment,
