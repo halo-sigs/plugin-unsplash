@@ -2,6 +2,9 @@
 
 Halo 2.0 接入 [Unsplash](https://unsplash.com/) 的插件，支持从 Unsplash 选择或者转存图片。
 
+> [!WARNING]  
+> 此仓库已归档，建议后续使用 [plugin-image-stream](https://github.com/halo-sigs/plugin-image-stream) 代替。
+
 ![Screenshot](./screenshots/plugin-unsplash.png)
 
 ## 安装与使用
